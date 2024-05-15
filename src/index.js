@@ -202,10 +202,10 @@ function applyGroupBy(data, groupByFields, aggregateFunctions) {
 }
 
 async function executeSELECTQuery(query) {
-    const { fields, table, whereClauses, joinType, joinTable, joinCondition, groupByFields, hasAggregateWithoutGroupBy } = parseQuery(query);
+    const { fields, table, whereClauses, joinType, joinTable, joinCondition, groupByFields, hasAggregateWithoutGroupBy, orderByFields } = parseQuery(query);
     let data = await readCSV(`${table}.csv`);
 
-    // Logic for applying JOINs
+    // Perform INNER JOIN if specified
     if (joinTable && joinCondition) {
         const joinData = await readCSV(`${joinTable}.csv`);
         switch (joinType.toUpperCase()) {
@@ -257,14 +257,39 @@ async function executeSELECTQuery(query) {
                 }
             }
         });
+
         return [result];
         // Add more cases here if needed for other aggregates
     } else if (groupByFields) {
         groupResults = applyGroupBy(filteredData, groupByFields, fields);
+
+        // Order them by the specified fields
+        let orderedResults = groupResults;
+        if (orderByFields) {
+            orderedResults = groupResults.sort((a, b) => {
+                for (let { fieldName, order } of orderByFields) {
+                    if (a[fieldName] < b[fieldName]) return order === 'ASC' ? -1 : 1;
+                    if (a[fieldName] > b[fieldName]) return order === 'ASC' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
         return groupResults;
     } else {
+        // Order them by the specified fields
+        let orderedResults = groupResults;
+        if (orderByFields) {
+            orderedResults = groupResults.sort((a, b) => {
+                for (let { fieldName, order } of orderByFields) {
+                    if (a[fieldName] < b[fieldName]) return order === 'ASC' ? -1 : 1;
+                    if (a[fieldName] > b[fieldName]) return order === 'ASC' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+
         // Select the specified fields
-        return groupResults.map(row => {
+        return orderedResults.map(row => {
             const selectedRow = {};
             fields.forEach(field => {
                 // Assuming 'field' is just the column name without table prefix
