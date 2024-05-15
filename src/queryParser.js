@@ -1,5 +1,3 @@
-// src/queryParser.js
-
 function parseJoinClause(query) {
     const joinRegex = /\s(INNER|LEFT|RIGHT) JOIN\s(.+?)\sON\s([\w.]+)\s*=\s*([\w.]+)/i;
     const joinMatch = query.match(joinRegex);
@@ -44,7 +42,7 @@ function checkAggregateWithoutGroupBy(query, groupByFields) {
     return aggregateFunctionRegex.test(query) && !groupByFields;
 }
 
-function parseQuery(query) {
+function parseSelectQuery(query) {
     try {
         // Trim the query to remove any leading/trailing whitespaces
         query = query.trim();
@@ -139,4 +137,21 @@ function parseQuery(query) {
     }
 }
 
-module.exports = { parseJoinClause, parseQuery };
+function parseInsertQuery(query) {
+    const insertRegex = /INSERT INTO (\w+)\s\((.+)\)\sVALUES\s\((.+)\)/i;
+    const match = query.match(insertRegex);
+
+    if (!match) {
+        throw new Error("Invalid INSERT INTO syntax.");
+    }
+
+    const [, table, columns, values] = match;
+    return {
+        type: 'INSERT',
+        table: table.trim(),
+        columns: columns.split(',').map(column => column.trim()),
+        values: values.split(',').map(value => value.trim())
+    };
+}
+
+module.exports = { parseJoinClause, parseSelectQuery, parseInsertQuery };
