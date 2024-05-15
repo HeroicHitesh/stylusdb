@@ -434,7 +434,6 @@ test('Parse COUNT Aggregate Query', () => {
     });
 });
 
-
 test('Parse SUM Aggregate Query', () => {
     const query = 'SELECT SUM(age) FROM student';
     const parsed = parseQuery(query);
@@ -635,7 +634,6 @@ test('Count enrollments per course', async () => {
     ]);
 });
 
-
 test('Count courses per student', async () => {
     const query = 'SELECT student_id, COUNT(*) FROM enrollment GROUP BY student_id';
     const result = await executeSELECTQuery(query);
@@ -792,4 +790,114 @@ test('DISTINCT with ORDER BY and LIMIT', async () => {
     const result = await executeSELECTQuery(query);
     // Expecting the two highest unique ages
     expect(result).toEqual([{ age: '30' }, { age: '25' }]);
+});
+
+test('Parse SQL Query with LIKE Clause', () => {
+    const query = "SELECT name FROM student WHERE name LIKE '%Jane%'";
+    const parsed = parseQuery(query);
+    expect(parsed).toEqual({
+        fields: ['name'],
+        table: 'student',
+        whereClauses: [{ field: 'name', operator: 'LIKE', value: '%Jane%' }],
+        joinType: null,
+        joinTable: null,
+        joinCondition: null,
+        groupByFields: null,
+        hasAggregateWithoutGroupBy: false,
+        orderByFields: null,
+        limit: null,
+        isDistinct: false
+    });
+});
+
+test('Parse SQL Query with LIKE Clause and Wildcards', () => {
+    const query = "SELECT name FROM student WHERE name LIKE 'J%'";
+    const parsed = parseQuery(query);
+    expect(parsed).toEqual({
+        fields: ['name'],
+        table: 'student',
+        whereClauses: [{ field: 'name', operator: 'LIKE', value: 'J%' }],
+        joinType: null,
+        joinTable: null,
+        joinCondition: null,
+        groupByFields: null,
+        hasAggregateWithoutGroupBy: false,
+        orderByFields: null,
+        limit: null,
+        isDistinct: false
+    });
+});
+
+test('Parse SQL Query with Multiple LIKE Clauses', () => {
+    const query = "SELECT name FROM student WHERE name LIKE 'J%' AND age LIKE '2%'";
+    const parsed = parseQuery(query);
+    expect(parsed).toEqual({
+        fields: ['name'],
+        table: 'student',
+        whereClauses: [
+            { field: 'name', operator: 'LIKE', value: 'J%' },
+            { field: 'age', operator: 'LIKE', value: '2%' }
+        ],
+        joinType: null,
+        joinTable: null,
+        joinCondition: null,
+        groupByFields: null,
+        hasAggregateWithoutGroupBy: false,
+        orderByFields: null,
+        limit: null,
+        isDistinct: false
+    });
+});
+
+test('Parse SQL Query with LIKE and ORDER BY Clauses', () => {
+    const query = "SELECT name FROM student WHERE name LIKE '%e%' ORDER BY age DESC";
+    const parsed = parseQuery(query);
+    expect(parsed).toEqual({
+        fields: ['name'],
+        table: 'student',
+        whereClauses: [{ field: 'name', operator: 'LIKE', value: '%e%' }],
+        joinType: null,
+        joinTable: null,
+        joinCondition: null,
+        groupByFields: null,
+        hasAggregateWithoutGroupBy: false,
+        orderByFields: [{ fieldName: 'age', order: 'DESC' }],
+        limit: null,
+        isDistinct: false
+    });
+});
+
+test('Execute SQL Query with LIKE Operator for Name', async () => {
+    const query = "SELECT name FROM student WHERE name LIKE '%Jane%'";
+    const result = await executeSELECTQuery(query);
+    // Expecting names containing 'Jane'
+    expect(result).toEqual([{ name: 'Jane' }, { name: 'Jane' }]);
+});
+
+test('Execute SQL Query with LIKE Operator and Wildcards', async () => {
+    const query = "SELECT name FROM student WHERE name LIKE 'J%'";
+    const result = await executeSELECTQuery(query);
+    // Expecting names starting with 'J'
+    expect(result).toEqual([{ name: 'John' }, { name: 'Jane' }, { name: 'Jane' }]);
+});
+
+test('Execute SQL Query with LIKE Operator Case Insensitive', async () => {
+    const query = "SELECT name FROM student WHERE name LIKE '%bob%'";
+    const result = await executeSELECTQuery(query);
+    // Expecting names 'Bob' (case insensitive)
+    expect(result).toEqual([{ name: 'Bob' }]);
+});
+
+test('Execute SQL Query with LIKE Operator and DISTINCT', async () => {
+    const query = "SELECT DISTINCT name FROM student WHERE name LIKE '%e%'";
+    const result = await executeSELECTQuery(query);
+    // Expecting unique names containing 'e'
+    expect(result).toEqual([{ name: 'Jane' }, { name: 'Alice' }]);
+});
+
+test('LIKE with ORDER BY and LIMIT', async () => {
+    const query = "SELECT name FROM student WHERE name LIKE '%a%' ORDER BY name ASC LIMIT 2";
+    const result = await executeSELECTQuery(query);
+    // Expecting the first two names alphabetically that contain 'a'
+    expect(result).toEqual([{ name: 'Alice' }, { name: 'Jane' }]);
 });
